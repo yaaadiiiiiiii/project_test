@@ -50,14 +50,6 @@ namespace _BookKeeping
 
         }
 
-        protected MySqlConnection DBConnection()
-        {
-            string connection = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-            MySqlConnection conn = new MySqlConnection(connection);
-            conn.Open();
-            return conn;
-        }
-
         protected void Button2_Click(object sender, EventArgs e)
         {
             string userid = RegAcc.Text;
@@ -68,7 +60,7 @@ namespace _BookKeeping
             string answer1 = Answer1.Text;
             string confirmPassword = ReRegPwd.Text;
             DateTime selectedDate = BirthDate.Date;
-
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             if (selectedDate != DateTime.MinValue)
             {
                 // 将生日存储在 Session 中
@@ -235,56 +227,60 @@ namespace _BookKeeping
                 defaultPet = "/src/images/cloth/defaultpet.png";
             }
 
-
-            // 在这里添加将用户信息插入数据库的代码
-            MySqlConnection conn = DBConnection();
-
             string sql = "INSERT INTO `112-112502`.user (user_id, nickname, gender, password, question1, answer1, birthday, cloth, cloth2, pet) VALUES (@user_id, @nickname, @gender, @password, @question1, @answer1, @birthdate, @defaultBody, @defaultClothing, @defaultPet)";
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-
-            cmd.Parameters.AddWithValue("@user_id", userid);
-            cmd.Parameters.AddWithValue("@nickname", nickname);
-            cmd.Parameters.AddWithValue("@gender", gender);
-            cmd.Parameters.AddWithValue("@password", password);
-            cmd.Parameters.AddWithValue("@question1", selectedQuestion1);
-            cmd.Parameters.AddWithValue("@answer1", answer1);
-            cmd.Parameters.AddWithValue("@birthdate", selectedDate);
-            cmd.Parameters.AddWithValue("@defaultClothing", defaultClothing);
-            cmd.Parameters.AddWithValue("@defaultBody", defaultBody);
-            cmd.Parameters.AddWithValue("@defaultPet", defaultPet);
-
             string petsql = "INSERT INTO `112-112502`.achievement_complete (user_id, cloth_id, a_id) VALUES (@user_id, @pet, 'DP')";
-            MySqlCommand petcmd = new MySqlCommand(petsql, conn);
-
-            petcmd.Parameters.AddWithValue("@user_id", userid);
-            petcmd.Parameters.AddWithValue("@pet", defaultPet);
-
-            int rowsAffetedPet = petcmd.ExecuteNonQuery();
-
-            petcmd.Parameters.Clear();
-
             string SQL = "INSERT INTO `112-112502`.achievement_complete (user_id, cloth_id, a_id) VALUES (@user_id, @cloth_id, 'DB')";
-            MySqlCommand sqlcmd = new MySqlCommand(SQL, conn);
-
-            sqlcmd.Parameters.AddWithValue("@user_id", userid);
-            sqlcmd.Parameters.AddWithValue("@cloth_id", defaultClothing); // 插入默认衣物的路径
-
-            int rowsAffectedClothing = sqlcmd.ExecuteNonQuery();
-
-            sqlcmd.Parameters.Clear(); // 清除之前的参数
-
             string clothSQL = "INSERT INTO `112-112502`.achievement_complete (user_id, cloth_id, a_id) VALUES (@user_id, @cloth_id, 'DH')";
-            MySqlCommand clothcmd = new MySqlCommand(clothSQL, conn);
+            int rowsaffected = 0;
+            int rowsAffetedPet = 0;
+            int rowsAffectedClothing = 0;
+            int rowsAffectedBody = 0;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
+            {
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@user_id", userid);
+                    cmd.Parameters.AddWithValue("@nickname", nickname);
+                    cmd.Parameters.AddWithValue("@gender", gender);
+                    cmd.Parameters.AddWithValue("@password", password);
+                    cmd.Parameters.AddWithValue("@question1", selectedQuestion1);
+                    cmd.Parameters.AddWithValue("@answer1", answer1);
+                    cmd.Parameters.AddWithValue("@birthdate", selectedDate);
+                    cmd.Parameters.AddWithValue("@defaultClothing", defaultClothing);
+                    cmd.Parameters.AddWithValue("@defaultBody", defaultBody);
+                    cmd.Parameters.AddWithValue("@defaultPet", defaultPet);
+                    rowsaffected = cmd.ExecuteNonQuery();
+                }
+                using (MySqlCommand petcmd = new MySqlCommand(petsql, conn))
+                {
+                    petcmd.Parameters.AddWithValue("@user_id", userid);
+                    petcmd.Parameters.AddWithValue("@pet", defaultPet);
 
-            clothcmd.Parameters.AddWithValue("@user_id", userid);
-            clothcmd.Parameters.AddWithValue("@cloth_id", defaultBody); // 插入默认身体的路径
+                    rowsAffetedPet = petcmd.ExecuteNonQuery();
 
-            int rowsAffectedBody = clothcmd.ExecuteNonQuery();
+                    petcmd.Parameters.Clear();
+                }
+                using (MySqlCommand sqlcmd = new MySqlCommand(SQL, conn))
+                {
+                    sqlcmd.Parameters.AddWithValue("@user_id", userid);
+                    sqlcmd.Parameters.AddWithValue("@cloth_id", defaultClothing); // 插入默认衣物的路径
 
-            int rowsaffected = cmd.ExecuteNonQuery();
+                   rowsAffectedClothing = sqlcmd.ExecuteNonQuery();
 
+                    sqlcmd.Parameters.Clear(); // 清除之前的参数
+                }
+                using (MySqlCommand clothcmd = new MySqlCommand(clothSQL, conn))
+                {
+                    clothcmd.Parameters.AddWithValue("@user_id", userid);
+                    clothcmd.Parameters.AddWithValue("@cloth_id", defaultBody); // 插入默认身体的路径
+
+                   rowsAffectedBody = clothcmd.ExecuteNonQuery();
+
+                }
+
+            }
             // 彈出視窗
-            if (rowsaffected > 0 && rowsAffectedBody > 0 && rowsAffectedClothing > 0)
+            if (rowsaffected > 0 && rowsAffectedBody > 0 && rowsAffectedClothing > 0 &&rowsAffetedPet>0)
             {
                 RegAcc.Text = "";
                 RegNickname.Text = "";
@@ -319,13 +315,17 @@ namespace _BookKeeping
 
         private bool IsUsernameAlreadyExists(string userid)
         {
-            using (MySqlConnection conn = DBConnection())
+            int count = 0;
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            string sql = "SELECT COUNT(*) FROM `112-112502`.user WHERE user_id = @userid";
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
             {
-                string sql = "SELECT COUNT(*) FROM `112-112502`.user WHERE user_id = @userid";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userid", userid);
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn)) 
+                {
+                    cmd.Parameters.AddWithValue("@userid", userid);
 
-                int count = Convert.ToInt32(cmd.ExecuteScalar());
+                     count = Convert.ToInt32(cmd.ExecuteScalar());
+                }
                 return count > 0;
             }
         }

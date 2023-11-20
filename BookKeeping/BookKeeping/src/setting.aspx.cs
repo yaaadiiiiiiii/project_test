@@ -26,21 +26,16 @@ namespace BookKeeping.src
                 {
                     // 使用用户 ID 查询数据库以获取用户数据
                     string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+
+                    // 创建 SQL 查询
+                    string query = "SELECT nickname, gender, user_id, birthday FROM `112-112502`.user WHERE user_id = @UserID";
                     using (MySqlConnection connection = new MySqlConnection(connectionString))
                     {
-                        connection.Open();
-
-                        // 创建 SQL 查询
-                        string query = "SELECT nickname, gender, user_id, birthday FROM `112-112502`.user WHERE user_id = @UserID";
-
                         using (MySqlCommand cmd = new MySqlCommand(query, connection))
                         {
                             cmd.Parameters.AddWithValue("@UserID", userID);
-
                             using (MySqlDataReader reader = cmd.ExecuteReader())
                             {
-                                
-
                                 if (reader.Read())
                                 {
                                     // 从数据库中获取用户数据并填充到 Label 中

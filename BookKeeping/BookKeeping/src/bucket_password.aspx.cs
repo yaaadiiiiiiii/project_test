@@ -51,18 +51,17 @@ namespace BookKeeping
 
         private bool CheckUserHasAuditPassword(string user_id)
         {
+            int count;
+            string sql = "SELECT COUNT(*) FROM `112-112502`.user WHERE user_id = @user_id AND YNpassword IS NOT NULL";
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                string sql = "SELECT COUNT(*) FROM `112-112502`.user WHERE user_id = @user_id AND YNpassword IS NOT NULL";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", user_id);
-
-                int count = Convert.ToInt32(cmd.ExecuteScalar());
-
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn)) 
+                {
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    count = Convert.ToInt32(cmd.ExecuteScalar());
+                }
                 // 如果 count 大于 0，表示用户已经注册了审核密码
                 return count > 0;
             }
@@ -136,19 +135,20 @@ namespace BookKeeping
         private void UpdateAuditPasswordForUser(string user_id, string newPassword, string ques, string Answer)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            string sql = "UPDATE `112-112502`.user SET YNpassword = @newPassword, question2 = @question, answer2 = @answer WHERE user_id = @user_id";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@newPassword", newPassword);
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    cmd.Parameters.AddWithValue("@question", ques);
+                    cmd.Parameters.AddWithValue("@answer", Answer);
 
-                string sql = "UPDATE `112-112502`.user SET YNpassword = @newPassword, question2 = @question, answer2 = @answer WHERE user_id = @user_id";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@newPassword", newPassword);
-                cmd.Parameters.AddWithValue("@user_id", user_id);
-                cmd.Parameters.AddWithValue("@question", ques);
-                cmd.Parameters.AddWithValue("@answer", Answer);
-
-                cmd.ExecuteNonQuery();
+                    cmd.ExecuteNonQuery();
+                }
+               
             }
         }
 
@@ -156,29 +156,27 @@ namespace BookKeeping
         private string GetPasswordForUser(string user_id)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            string sql = "SELECT YNpassword FROM `112-112502`.user where user_id = @user_id";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                string sql = "SELECT YNpassword FROM `112-112502`.user where user_id = @user_id";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", user_id);
-
-                using (MySqlDataReader reader = cmd.ExecuteReader())
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn)) 
                 {
-                    if (reader.Read())
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        // 從資料庫中獲取密碼並返回
-                        return reader["YNpassword"].ToString();
-                    }
-                    else
-                    {
-                        // 如果未找到用戶，可以返回 null 或其他適當的值
-                        return null;
+                        if (reader.Read())
+                        {
+                            // 從資料庫中獲取密碼並返回
+                            return reader["YNpassword"].ToString();
+                        }
+                        else
+                        {
+                            // 如果未找到用戶，可以返回 null 或其他適當的值
+                            return null;
+                        }
                     }
                 }
-
             }
         }
 

@@ -33,34 +33,27 @@ namespace _BookKeeping
             }
         }
 
-        protected MySqlConnection DBConnection()
-        {
-            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-            MySqlConnection connection = new MySqlConnection(connectionStrings);
-            connection.Open();
-            return connection;
-        }
-
         protected void SearchData(string sql, string year, string month, string day, string category, string keyword)
         {
-            MySqlConnection conn = DBConnection();
-
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@year", year);
-            cmd.Parameters.AddWithValue("@month", month);
-            cmd.Parameters.AddWithValue("@day", day);
-            cmd.Parameters.AddWithValue("@category", category);
-            cmd.Parameters.AddWithValue("@keyword", keyword);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-
-            MySqlDataReader reader = cmd.ExecuteReader();
-
-            // 將資料繫結到 GridView 控制項上
-            SearchView.DataSource = reader;
-            SearchView.DataBind();
-
-            reader.Close();
-
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
+            {
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@year", year);
+                    cmd.Parameters.AddWithValue("@month", month);
+                    cmd.Parameters.AddWithValue("@day", day);
+                    cmd.Parameters.AddWithValue("@category", category);
+                    cmd.Parameters.AddWithValue("@keyword", keyword);
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        // 將資料繫結到 GridView 控制項上
+                        SearchView.DataSource = reader;
+                        SearchView.DataBind();
+                    }
+                }
+            }
             if (SearchView.Rows.Count == 0)
             {
                 // 若 GridView 中沒有資料，顯示查無資料的提示
@@ -71,8 +64,6 @@ namespace _BookKeeping
                 // 若有資料，隱藏提示
                 NoDataLabel.Visible = false;
             }
-
-            conn.Close();
         }
 
         protected void Search_Click(object sender, EventArgs e)

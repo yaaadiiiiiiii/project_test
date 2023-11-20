@@ -58,31 +58,32 @@ namespace _BookKeeping
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             string user_id = Session["UserID"].ToString();
-            
+            string query = "SELECT a_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id";
 
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                connection.Open();
 
                 //將已完成的成就存放至陣列中
                 List<string> finishTaskLists = new List<string>();
                 int[] taskCount = { 5, 10, 20, 50 };
                 int[] scoreCount = { 10, 20, 30 };
 
-                string query = "SELECT a_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id";
-                MySqlCommand command = new MySqlCommand(query, connection);
-                command.Parameters.AddWithValue("@user_id", user_id);
-
-                // 執行 SQL 查詢
-                using (MySqlDataReader reader = command.ExecuteReader())
+                using (MySqlCommand cmd = new MySqlCommand(query, connection)) 
                 {
-                    while (reader.Read())
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        string finishTaskList = reader.GetString("a_id");
-                        finishTaskLists.Add(finishTaskList);
-                    }
+                        while (reader.Read())
+                        {
+                            string finishTaskList = reader.GetString("a_id");
+                            finishTaskLists.Add(finishTaskList);
+                        }
 
+                    }
                 }
+                
+
+               
 
                 //將清單轉換成陣列
                 string[] finishTaskArray = finishTaskLists.ToArray();
@@ -218,16 +219,12 @@ namespace _BookKeeping
             if (Session["UserID"] != null)
             {
                 string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-
+                string sql_ach = "INSERT INTO `112-112502`.achievement_complete (user_id, a_id, cloth_id) VALUES (@user_id, @task_id, @cloth_id)";
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
-                    connection.Open();
-
                     Button claimButton = (Button)sender;
                     string taskId = claimButton.CommandArgument.ToString();
                     string gender = UserGender(connection);
-                    
-
                     // 根据 taskId 执行相应的操作，例如发放奖励
 
                     // 使用 Session 中的用户ID
@@ -245,7 +242,7 @@ namespace _BookKeeping
                         // 基于 task_id 是否为奇数来构建 @cloth_id
                         string clothIdValue = imageUrl;
 
-                        string sql_ach = "INSERT INTO `112-112502`.achievement_complete (user_id, a_id, cloth_id) VALUES (@user_id, @task_id, @cloth_id)";
+                      
 
                         using (MySqlCommand cmd = new MySqlCommand(sql_ach, connection))
                         {

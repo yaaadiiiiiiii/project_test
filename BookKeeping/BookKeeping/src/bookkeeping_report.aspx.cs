@@ -24,31 +24,24 @@ namespace _BookKeeping
 
             if (!IsPostBack)
             {
-                MySqlConnection conn = DBConnection();
+                string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
                 int currentMonth = DateTime.Now.Month;
-
-                // 将 GetMonthlyCategoryTotals 的逻辑整合到 Page_Load
-                DataTable dt = GetMonthlyCategoryTotals(conn, currentMonth, DateTime.Now.Year);
-
-                // 绑定 GridView 控件
-                GridView1.DataSource = dt;
-                GridView1.DataBind();
-
-                // 生成 Chart
-                GenerateChart(conn, currentMonth);
-
                 // 设置 Label1 文本
                 Label1.Text = DateTime.Now.Year.ToString() + "年" + currentMonth.ToString() + "月";
+                using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
+                {
+                    // 将 GetMonthlyCategoryTotals 的逻辑整合到 Page_Load
+                    DataTable dt = GetMonthlyCategoryTotals(conn, currentMonth, DateTime.Now.Year);
+                    // 生成 Chart
+                    GenerateChart(conn, currentMonth);
+                    // 绑定 GridView 控件
+                    GridView1.DataSource = dt;
+                    GridView1.DataBind();
+                }
+                   
+
+              
             }
-        }
-
-
-        protected MySqlConnection DBConnection()
-        {
-            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-            MySqlConnection connection = new MySqlConnection(connectionStrings);
-            connection.Open();
-            return connection;
         }
 
         protected void SearchSelectMonth(MySqlConnection connection, int month)
@@ -69,18 +62,19 @@ namespace _BookKeeping
 
             Label1.Text = DateTime.Now.Year.ToString() + "年" + currentMonth.ToString() + "月";
             string sql = "SELECT num, date, b.cls_name, cost, mark FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id \r\n where user_id = @user_id and year(date) = @year and month(date) = @month order by date;";
-            MySqlCommand cmd = new MySqlCommand(sql, connection);
-            cmd.Parameters.AddWithValue("@year", DateTime.Now.Year);
-            cmd.Parameters.AddWithValue("@month", currentMonth);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
+            using (MySqlCommand cmd = new MySqlCommand(sql, connection)) 
+            {
+                cmd.Parameters.AddWithValue("@year", DateTime.Now.Year);
+                cmd.Parameters.AddWithValue("@month", currentMonth);
+                cmd.Parameters.AddWithValue("@user_id", user_id);
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    // 將資料繫結到 GridView 控制項上
+                    GridView1.DataSource = reader;
+                    GridView1.DataBind();
+                }
 
-            MySqlDataReader reader = cmd.ExecuteReader();
-
-            // 將資料繫結到 GridView 控制項上
-            GridView1.DataSource = reader;
-            GridView1.DataBind();
-
-            reader.Close();
+            }
         }
 
         protected void GenerateChart(MySqlConnection connection, int month)
@@ -88,6 +82,8 @@ namespace _BookKeeping
             string year = DateTime.Now.Year.ToString();
 
             Label1.Text = year + "年" + month.ToString() + "月";
+
+            string sql = "SELECT sum(cost) FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id  WHERE user_id=@user_id AND b.cls_name=@class AND YEAR(date)=@year AND MONTH(date)=@month";
 
             // 定義五個類別
             string[] categories = { "願望", "飲食", "娛樂", "其他", "兌換願望" };
@@ -97,20 +93,23 @@ namespace _BookKeeping
 
             foreach (string category in categories)
             {
-                MySqlCommand cmd = new MySqlCommand("SELECT sum(cost) FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id  WHERE user_id=@user_id AND b.cls_name=@class AND YEAR(date)=@year AND MONTH(date)=@month", connection);
-                cmd.Parameters.AddWithValue("@user_id", user_id);
-                cmd.Parameters.AddWithValue("@class", category);
-                cmd.Parameters.AddWithValue("@year", year);
-                cmd.Parameters.AddWithValue("@month", month);
-
-                object result = cmd.ExecuteScalar();
-                if (result != null && !Convert.IsDBNull(result))
+                using (MySqlCommand cmd = new MySqlCommand(sql, connection)) 
                 {
-                    int cost = Convert.ToInt32(result);
-                    Chart1.Series["Series1"].Points.AddXY(category, cost);
-                    dataExists = true;
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    cmd.Parameters.AddWithValue("@class", category);
+                    cmd.Parameters.AddWithValue("@year", year);
+                    cmd.Parameters.AddWithValue("@month", month);
 
+                    object result = cmd.ExecuteScalar();
+                    if (result != null && !Convert.IsDBNull(result))
+                    {
+                        int cost = Convert.ToInt32(result);
+                        Chart1.Series["Series1"].Points.AddXY(category, cost);
+                        dataExists = true;
+
+                    }
                 }
+               
 
                 // 如果没有数据存在，隐藏图表
                 Chart1.Visible = dataExists;
@@ -132,6 +131,7 @@ namespace _BookKeeping
         }
         protected void PlusMonth_Click(object sender, EventArgs e)
         {
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             // 獲取當前日期
             DateTime currentDate = DateTime.ParseExact(Label1.Text, "yyyy年M月", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -141,12 +141,15 @@ namespace _BookKeeping
             // 更新 Label 控件的文本，使用新的日期提取月份
             Label1.Text = newDate.ToString("yyyy年M月");
 
-            MySqlConnection conn = DBConnection();
-            UpdateGridView(conn, newDate.Month, newDate.Year);
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
+            {
+                UpdateGridView(conn, newDate.Month, newDate.Year);
+            }
         }
 
         protected void MinusMonth_Click(object sender, EventArgs e)
         {
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             // 獲取當前日期
             DateTime currentDate = DateTime.ParseExact(Label1.Text, "yyyy年M月", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -156,8 +159,10 @@ namespace _BookKeeping
             // 更新 Label 控件的文本，使用新的日期提取月份
             Label1.Text = newDate.ToString("yyyy年M月");
 
-            MySqlConnection conn = DBConnection();
-            UpdateGridView(conn, newDate.Month, newDate.Year);
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
+            {
+                UpdateGridView(conn, newDate.Month, newDate.Year);
+            }
         }
 
         private void UpdateGridView(MySqlConnection connection, int month, int year)
@@ -182,13 +187,16 @@ namespace _BookKeeping
                            "GROUP BY b.cls_name";
 
 
-            MySqlCommand cmd = new MySqlCommand(query, connection);
-            cmd.Parameters.AddWithValue("@month", month);
-            cmd.Parameters.AddWithValue("@year", year);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            MySqlDataAdapter adapter = new MySqlDataAdapter(cmd);
-            adapter.Fill(dt);
-
+            using (MySqlCommand cmd = new MySqlCommand(query, connection)) 
+            {
+                cmd.Parameters.AddWithValue("@month", month);
+                cmd.Parameters.AddWithValue("@year", year);
+                cmd.Parameters.AddWithValue("@user_id", user_id);
+                using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd)) 
+                {
+                    adapter.Fill(dt);
+                }
+            }
             // count in and out amount
             decimal totalIncome = 0;
             decimal totalExpenses = 0;

@@ -46,25 +46,18 @@ namespace BookKeeping
                     }
 
                     string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-
+                    // 从数据库中获取注册时选择的问题和答案
+                    string selectQuery = "SELECT question2, answer2 FROM `112-112502`.user WHERE user_id = @user_id";
                     using (MySqlConnection conn = new MySqlConnection(connectionString))
                     {
-                        conn.Open();
-
-                        // 从数据库中获取注册时选择的问题和答案
-                        string selectQuery = "SELECT question2, answer2 FROM `112-112502`.user WHERE user_id = @user_id";
                         MySqlCommand selectCommand = new MySqlCommand(selectQuery, conn);
                         selectCommand.Parameters.AddWithValue("@user_id", user_id);
-
                         using (MySqlDataReader reader = selectCommand.ExecuteReader())
                         {
                             if (reader.Read())
                             {
                                 string originalQuestion = reader["question2"].ToString();
                                 string originalAnswer = reader["answer2"].ToString();
-
-                                reader.Close();
-
                                 // 判断用户输入的问题和答案是否与数据库中的一致
                                 if (selectquestion == originalQuestion && selectanswer == originalAnswer)
                                 {
@@ -72,32 +65,34 @@ namespace BookKeeping
                                     {
                                         // 更新密码
                                         string updateQuery = "UPDATE `112-112502`.user SET YNpassword = @password WHERE user_id = @user_id";
-                                        MySqlCommand updateCommand = new MySqlCommand(updateQuery, conn);
-                                        updateCommand.Parameters.AddWithValue("@user_id", user_id);
-                                        updateCommand.Parameters.AddWithValue("@password", newpwd);
-
-                                        int rowsUpdated = updateCommand.ExecuteNonQuery();
-
-                                        if (rowsUpdated > 0)
+                                        using (MySqlCommand updateCommand = new MySqlCommand(updateQuery, conn)) 
                                         {
-                                            // 密码更新成功
-                                            // 清空文本框
-                                            securityQuestion.SelectedValue = "";
-                                            securityAnswer.Text = "";
-                                            UserPwd.Text = "";
-                                            TextBox1.Text = "";
+                                            updateCommand.Parameters.AddWithValue("@user_id", user_id);
+                                            updateCommand.Parameters.AddWithValue("@password", newpwd);
 
-                                            // 显示成功消息
-                                            string script = "var overlay = document.getElementById('overlay');";
-                                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                                            script += "var imageBox = document.createElement('img');";
-                                            script += "imageBox.src = 'images/alert_1Y.png';";
-                                            script += "imageBox.className = 'custom-image';";
-                                            script += "document.body.appendChild(imageBox);";
-                                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                                            script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("bucket_password.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转到登录页面
-                                            ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
-                                        }
+                                            int rowsUpdated = updateCommand.ExecuteNonQuery();
+
+                                            if (rowsUpdated > 0)
+                                            {
+                                                // 密码更新成功
+                                                // 清空文本框
+                                                securityQuestion.SelectedValue = "";
+                                                securityAnswer.Text = "";
+                                                UserPwd.Text = "";
+                                                TextBox1.Text = "";
+
+                                                // 显示成功消息
+                                                string script = "var overlay = document.getElementById('overlay');";
+                                                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                                                script += "var imageBox = document.createElement('img');";
+                                                script += "imageBox.src = 'images/alert_1Y.png';";
+                                                script += "imageBox.className = 'custom-image';";
+                                                script += "document.body.appendChild(imageBox);";
+                                                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                                                script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("bucket_password.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转到登录页面
+                                                ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
+                                            }
+                                        } 
                                     }
                                     else
                                     {

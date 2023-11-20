@@ -44,25 +44,21 @@ namespace _BookKeeping
                     gender += "g";
                 }
             }
-
-
             return gender;
         }
 
         private void BindTaskList()
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            //將已完成的成就存放至陣列中
+            List<string> finishTaskLists = new List<string>();
+            int[] taskCount = { 5, 10, 20, 50 };
+            int[] scoreCount = { 10, 20, 30 };
+
+            string query = "SELECT a_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id";
 
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                connection.Open();
-
-                //將已完成的成就存放至陣列中
-                List<string> finishTaskLists = new List<string>();
-                int[] taskCount = { 5, 10, 20, 50 };
-                int[] scoreCount = { 10, 20, 30 };
-
-                string query = "SELECT a_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id";
                 MySqlCommand command = new MySqlCommand(query, connection);
                 command.Parameters.AddWithValue("@user_id", user_id);
 
@@ -79,10 +75,6 @@ namespace _BookKeeping
 
                 //將清單轉換成陣列
                 string[] finishTaskArray = finishTaskLists.ToArray();
-
-
-
-
                 // 獲取使用者性別
                 
                 string gender = UserGender(connection);
@@ -111,8 +103,6 @@ namespace _BookKeeping
                         task1["TaskName"] = "記帳次數達" + cnt.ToString() + "次";
                         task1["ImageURLField"] = ResolveUrl("~/src/images/checked.png");
                         dt.Rows.Add(task1);
-
-                       
                     }
                 }
 
@@ -131,7 +121,6 @@ namespace _BookKeeping
                         task2["TaskName"] = "許願次數達" + cnt.ToString() + "次";
                         task2["ImageURLField"] = ResolveUrl("~/src/images/checked.png");
                         dt.Rows.Add(task2);
-                       
                     }
                 }
                 for (int k = 9; k <= 11; k += 1)
@@ -147,14 +136,10 @@ namespace _BookKeeping
                         task3["TaskName"] = "小遊戲答對題數達" + cnt.ToString() + "次";
                         task3["ImageURLField"] = ResolveUrl("~/src/images/checked.png");
                         dt.Rows.Add(task3);
-                       
                     }
                 }
-
-
                 FinishRepeater.DataSource = dt;
                 FinishRepeater.DataBind();
-                connection.Close();
             }
         }
 

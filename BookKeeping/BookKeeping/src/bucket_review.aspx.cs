@@ -62,32 +62,46 @@ namespace BookKeeping.src
 
         protected string FindName()
         {
-            MySqlConnection conn = DBConnection();
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             string sql = "SELECT nickname FROM `112-112502`.user\r\nwhere user_id = @user_id";
             string user_name = string.Empty;
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            MySqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read())
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                user_name = reader.GetString(0);
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            user_name = reader.GetString(0);
+                        }
+                    }
+                }
+               
             }
-
             return user_name;
         }
 
         protected string[] GetArray()
         {
-            MySqlConnection conn = DBConnection();
-            string sql = "SELECT d_name FROM `112-112502`.bucket_list\r\nwhere user_id = @user_id and pass_state = \'r\';";
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            MySqlDataReader reader = cmd.ExecuteReader();
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             List<string> list = new List<string>();
-            while (reader.Read())
+            string sql = "SELECT d_name FROM `112-112502`.bucket_list\r\nwhere user_id = @user_id and pass_state = \'r\';";
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
             {
-                string data = reader.GetString(0);
-                list.Add(data);
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string data = reader.GetString(0);
+                            list.Add(data);
+                        }
+                    }
+                }
             }
             string[] wish_list = list.ToArray();
             return wish_list;
@@ -136,126 +150,124 @@ namespace BookKeeping.src
 
         protected void Submit_Click(object sender, EventArgs e)
         {
-            MySqlConnection conn = DBConnection();
-
-
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             string selectedValue = RadioButtonList1.SelectedValue;
             string wish_name = label2.Text;
+            string dName;
 
             string dNum = "SELECT d_num FROM `112-112502`.bucket_list where `d_name` = @wish_name and `user_id` = @user_id and `pass_state` = 'r'";
 
-            MySqlCommand cmd = new MySqlCommand(dNum, conn);
-            cmd.Parameters.AddWithValue("@wish_name", wish_name);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            MySqlDataReader reader = cmd.ExecuteReader();
-
-            reader.Read();
-            string dName = reader.GetString(0);
-            conn.Close();
-            if (selectedValue == "y")
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                int amount;
-                if (!int.TryParse(MoneyTextbox.Text, out amount))
+                using (MySqlCommand cmd = new MySqlCommand(dNum, conn))
                 {
-                    ErrorMessagel.Text = "請輸入有效的金額!";
-                    ErrorMessagel.Visible = true;
-                    return;
+                    cmd.Parameters.AddWithValue("@wish_name", wish_name);
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        dName = reader.GetString(0);
+                    }
                 }
-
-                string sql = "update `112-112502`.bucket_list set pass_amount = @amount , pass_state = 'y' where(`d_num` = @dName)";
-
-                conn.Open();
-                MySqlCommand command = new MySqlCommand(sql, conn);
-                command.Parameters.AddWithValue("@amount", amount);
-                command.Parameters.AddWithValue("@dName", dName);
-                int rows_affected = command.ExecuteNonQuery();
-                conn.Close();
-
-                if (rows_affected > 0)
+                if (selectedValue == "y")
                 {
-                    MoneyTextbox.Text = null;
-                    CauseTextbox.Text = null;
-                    ErrorMessagel.Visible = false;
-                    string script = "var overlay = document.getElementById('overlay');";
-                    script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                    script += "var imageBox = document.createElement('img');";
-                    script += "imageBox.src = 'images/alert_2Y.png';";
-                    script += "imageBox.className = 'custom-image';";
-                    script += "document.body.appendChild(imageBox);";
-                    script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                    script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/bucket_review.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
-                    ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
-                    DisplayWindows();
+                    int amount;
+                    string sql = "update `112-112502`.bucket_list set pass_amount = @amount , pass_state = 'y' where(`d_num` = @dName)";
+                    if (!int.TryParse(MoneyTextbox.Text, out amount))
+                    {
+                        ErrorMessagel.Text = "請輸入有效的金額!";
+                        ErrorMessagel.Visible = true;
+                        return;
+                    }
+                    using (MySqlCommand command = new MySqlCommand(sql, conn))
+                    {
+                        command.Parameters.AddWithValue("@amount", amount);
+                        command.Parameters.AddWithValue("@dName", dName);
+                        int rows_affected = command.ExecuteNonQuery();
+                        if (rows_affected > 0)
+                        {
+                            MoneyTextbox.Text = null;
+                            CauseTextbox.Text = null;
+                            ErrorMessagel.Visible = false;
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_2Y.png';";
+                            script += "imageBox.className = 'custom-image';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/bucket_review.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
+                            ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
+                            DisplayWindows();
+                        }
+                        else
+                        {
+                            MoneyTextbox.Text = null;
+                            CauseTextbox.Text = null;
+                            ErrorMessagel.Visible = false;
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_2N.png';";
+                            script += "imageBox.className = 'custom-image';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                            ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
+                            DisplayWindows();
+                        }
+                    }
                 }
-                else
+                if (selectedValue == "n")
                 {
-                    MoneyTextbox.Text = null;
-                    CauseTextbox.Text = null;
-                    ErrorMessagel.Visible = false;
-                    string script = "var overlay = document.getElementById('overlay');";
-                    script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                    script += "var imageBox = document.createElement('img');";
-                    script += "imageBox.src = 'images/alert_2N.png';";
-                    script += "imageBox.className = 'custom-image';";
-                    script += "document.body.appendChild(imageBox);";
-                    script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                    script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                    ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
-                    DisplayWindows();
+                    string reason = CauseTextbox.Text;
+                    if (string.IsNullOrEmpty(reason))
+                    {
+                        ErrorMessage2.Text = "請輸入拒絕原因!";
+                        ErrorMessage2.Visible = true;
+                        return;
+                    }
+                    string sql = "update `112-112502`.bucket_list set reason = @reason , pass_state = 'n' where(`d_num` = @dName)";
+
+                    using (MySqlCommand command = new MySqlCommand(sql, conn)) 
+                    {
+                        command.Parameters.AddWithValue("@reason", reason);
+                        command.Parameters.AddWithValue("@dName", dName);
+                        int rows_affect = command.ExecuteNonQuery();
+
+                        if (rows_affect > 0)
+                        {
+                            MoneyTextbox.Text = null;
+                            CauseTextbox.Text = null;
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_2Y.png';";
+                            script += "imageBox.className = 'custom-image';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/bucket_review.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
+                            ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
+                            DisplayWindows();
+                        }
+                        else
+                        {
+                            MoneyTextbox.Text = null;
+                            CauseTextbox.Text = null;
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_2N.png';";
+                            script += "imageBox.className = 'custom-image';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                            ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
+                            DisplayWindows();
+                        }
+                    }                   
                 }
             }
-
-            if (selectedValue == "n")
-            {
-                string reason = CauseTextbox.Text;
-                if (string.IsNullOrEmpty(reason))
-                {
-                    ErrorMessage2.Text = "請輸入拒絕原因!";
-                    ErrorMessage2.Visible = true;
-                    return;
-                }
-                string sql = "update `112-112502`.bucket_list set reason = @reason , pass_state = 'n' where(`d_num` = @dName)";
-
-                conn.Open();
-
-                MySqlCommand command = new MySqlCommand(sql, conn);
-
-                command.Parameters.AddWithValue("@reason", reason);
-                command.Parameters.AddWithValue("@dName", dName);
-
-                int rows_affect = command.ExecuteNonQuery();
-
-                if (rows_affect > 0)
-                {
-                    MoneyTextbox.Text = null;
-                    CauseTextbox.Text = null;
-                    string script = "var overlay = document.getElementById('overlay');";
-                    script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                    script += "var imageBox = document.createElement('img');";
-                    script += "imageBox.src = 'images/alert_2Y.png';";
-                    script += "imageBox.className = 'custom-image';";
-                    script += "document.body.appendChild(imageBox);";
-                    script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                    script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/bucket_review.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
-                    ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
-                    DisplayWindows();
-                }
-                else
-                {
-                    MoneyTextbox.Text = null;
-                    CauseTextbox.Text = null;
-                    string script = "var overlay = document.getElementById('overlay');";
-                    script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                    script += "var imageBox = document.createElement('img');";
-                    script += "imageBox.src = 'images/alert_2N.png';";
-                    script += "imageBox.className = 'custom-image';";
-                    script += "document.body.appendChild(imageBox);";
-                    script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                    script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                    ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
-                    DisplayWindows();
-                }
-            }
+        }       
         }
     }
-}

@@ -31,20 +31,14 @@ namespace _BookKeeping
                     // 如果使用者未登入，可以執行相應的處理，例如導向到登入頁面
                     Response.Redirect("login.aspx");
                 }
+                string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+                using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
+                {
+                    currentMonth = DateTime.Now.Month; // 紀錄顯示的月份
+                    SearchSelectMonth(conn, currentMonth);
+                }
 
-                MySqlConnection conn = DBConnection();
-                currentMonth = DateTime.Now.Month; // 紀錄顯示的月份
-                SearchSelectMonth(conn, currentMonth);
             }
-        }
-
-
-        protected MySqlConnection DBConnection()
-        {
-            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-            MySqlConnection connection = new MySqlConnection(connectionStrings);
-            connection.Open();
-            return connection;
         }
 
         protected void SearchSelectMonth(MySqlConnection connection, int month)
@@ -62,29 +56,21 @@ namespace _BookKeeping
 
             // 將月份限制在有效範圍內
             int currentMonth = Math.Max(1, Math.Min(DateTime.Now.Month, month));
-
-            Label1.Text = DateTime.Now.Year.ToString() + "年" + currentMonth.ToString() + "月";
-            string sql = "SELECT num, date, b.cls_name, cost, mark FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id where user_id = @user_id and year(date) = @year and month(date) = @month order by date;";
-            MySqlCommand cmd = new MySqlCommand(sql, connection);
-            cmd.Parameters.AddWithValue("@year", DateTime.Now.Year);
-            cmd.Parameters.AddWithValue("@month", currentMonth);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-
-            //MySqlDataReader reader = cmd.ExecuteReader();
-
-            // 將資料繫結到 GridView 控制項上
-            //GridView1.DataSource = reader;
-            //GridView1.DataBind();
-
-            //reader.Close();
-
             // 使用 DataTable 來存儲數據
             DataTable dataTable = new DataTable();
-
-            // 使用 MySqlDataAdapter 從數據庫中檢索數據並填充 DataTable
-            using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
+            Label1.Text = DateTime.Now.Year.ToString() + "年" + currentMonth.ToString() + "月";
+            string sql = "SELECT num, date, b.cls_name, cost, mark FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id where user_id = @user_id and year(date) = @year and month(date) = @month order by date;";
+            using (MySqlCommand cmd = new MySqlCommand(sql, connection)) 
             {
-                adapter.Fill(dataTable);
+                cmd.Parameters.AddWithValue("@year", DateTime.Now.Year);
+                cmd.Parameters.AddWithValue("@month", currentMonth);
+                cmd.Parameters.AddWithValue("@user_id", user_id);
+                // 使用 MySqlDataAdapter 從數據庫中檢索數據並填充 DataTable
+                using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
+                {
+                    adapter.Fill(dataTable);
+                }
+
             }
 
             // 設置 GridView 的數據來源為 DataTable
@@ -97,129 +83,136 @@ namespace _BookKeeping
 
         protected void MinusMonth_Click(object sender, EventArgs e)
         {
-            MySqlConnection conn = DBConnection();
-            Button btn = (Button)sender;
             //邊界值
             int MinMonth = 1;
             //求現在顯示的月份
             int indexMonth = Convert.ToInt32(Label1.Text.Substring(Label1.Text.IndexOf("年") + 1, Label1.Text.Length - 6).ToString());
-            if (indexMonth > MinMonth)
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                indexMonth -= 1;
-                currentMonth = indexMonth; // 更新顯示的月份
-                Session["currentMonth"] = currentMonth; // 更新 Session 變數
-                SearchSelectMonth(conn, indexMonth);
+                if (indexMonth > MinMonth)
+                {
+                    indexMonth -= 1;
+                    currentMonth = indexMonth; // 更新顯示的月份
+                    Session["currentMonth"] = currentMonth; // 更新 Session 變數
+                    SearchSelectMonth(conn, indexMonth);
+                }
             }
+
+           
         }
 
 
         protected void PlusMonth_Click(object sender, EventArgs e)
         {
-            MySqlConnection conn = DBConnection();
-            Button btn = (Button)sender;
             //邊界值
             int MaxMonth = DateTime.Now.Month;
             //求現在顯示的月份
             int indexMonth = Convert.ToInt32(Label1.Text.Substring(Label1.Text.IndexOf("年") + 1, Label1.Text.Length - 6).ToString());
-            if (indexMonth < MaxMonth)
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                indexMonth += 1;
-                currentMonth = indexMonth; // 更新顯示的月份
-                Session["currentMonth"] = currentMonth; // 更新 Session 變數
-                SearchSelectMonth(conn, indexMonth);
+                if (indexMonth < MaxMonth)
+                {
+                    indexMonth += 1;
+                    currentMonth = indexMonth; // 更新顯示的月份
+                    Session["currentMonth"] = currentMonth; // 更新 Session 變數
+                    SearchSelectMonth(conn, indexMonth);
+                }
             }
+
+               
         }
 
 
         protected void Submit_Click(object sender, EventArgs e)
         {
             // 資料庫連接
-            MySqlConnection conn = DBConnection();
-
-
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            string sql = "INSERT INTO `112-112502`.bookkeeping_data(user_id, date, class_id, cost, mark) VALUES (@name, @date, @category, @cost, @mark)";
             DateTime datetime = DateTime.Parse(Request.Form["date"]);
             DateTime date = datetime.Date;
-
+            string category = Request.Form["radio"].ToString();
             string costInput = TextBox1.Text;
-            if (!string.IsNullOrEmpty(costInput))
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
             {
-                if (int.TryParse(costInput, out int cost))
+                
+                if (!string.IsNullOrEmpty(costInput))
                 {
-                    string mark = TextBox2.Text;
-
-                    // 檢查備註欄位的字數
-                    if (mark.Length > 8)
+                    if (int.TryParse(costInput, out int cost))
                     {
-                        string script = "var overlay = document.getElementById('overlay');";
-                        script += "overlay.style.display = 'block';";
-                        script += "var imageBox = document.createElement('img');";
-                        script += "imageBox.src = 'images/alert_eight_word.png';";
-                        script += "imageBox.className = 'custom-image2';";
-                        script += "document.body.appendChild(imageBox);";
-                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);";
-                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);";
-                        ClientScript.RegisterStartupScript(GetType(), "備註欄位最多只能輸入8個字!", script, true);
-                        return; // 停止執行，不執行後續的程式碼
-                    }
+                        string mark = TextBox2.Text;
 
-                    string category = Request.Form["radio"].ToString();
+                        // 檢查備註欄位的字數
+                        if (mark.Length > 8)
+                        {
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';";
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_eight_word.png';";
+                            script += "imageBox.className = 'custom-image2';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);";
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);";
+                            ClientScript.RegisterStartupScript(GetType(), "備註欄位最多只能輸入8個字!", script, true);
+                            return; // 停止執行，不執行後續的程式碼
+                        }
 
-                    string sql = "INSERT INTO `112-112502`.bookkeeping_data(user_id, date, class_id, cost, mark) VALUES (@name, @date, @category, @cost, @mark)";
 
-                    MySqlCommand cmd = new MySqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@name", user_id);
-                    cmd.Parameters.AddWithValue("@category", category);
-                    cmd.Parameters.AddWithValue("@date", date);
-                    cmd.Parameters.AddWithValue("@cost", cost);
-                    cmd.Parameters.AddWithValue("@mark", mark);
 
-                    int rows_affect = cmd.ExecuteNonQuery();
-                    if (rows_affect > 0)
-                    {
-                        TextBox1.Text = null;
-                        TextBox2.Text = null;
-                        ErrorMessageLabel.Text = "";
-                        string script = "var overlay = document.getElementById('overlay');";
-                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                        script += "var imageBox = document.createElement('img');";
-                        script += "imageBox.src = 'images/alert_2Y.png';";
-                        script += "imageBox.className = 'custom-image';";
-                        script += "document.body.appendChild(imageBox);";
-                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                        ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
+                        using (MySqlCommand cmd = new MySqlCommand(sql, conn)) 
+                        {
+                            cmd.Parameters.AddWithValue("@name", user_id);
+                            cmd.Parameters.AddWithValue("@category", category);
+                            cmd.Parameters.AddWithValue("@date", date);
+                            cmd.Parameters.AddWithValue("@cost", cost);
+                            cmd.Parameters.AddWithValue("@mark", mark);
+                            int rows_affect = cmd.ExecuteNonQuery();
+                            if (rows_affect > 0)
+                            {
+                                TextBox1.Text = null;
+                                TextBox2.Text = null;
+                                ErrorMessageLabel.Text = "";
+                                string script = "var overlay = document.getElementById('overlay');";
+                                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                                script += "var imageBox = document.createElement('img');";
+                                script += "imageBox.src = 'images/alert_2Y.png';";
+                                script += "imageBox.className = 'custom-image';";
+                                script += "document.body.appendChild(imageBox);";
+                                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                                ClientScript.RegisterStartupScript(GetType(), "新增成功", script, true);
 
-                        SearchSelectMonth(conn, date.Month);
+                                SearchSelectMonth(conn, date.Month);
+                            }
+                            else
+                            {
+                                string script = "var overlay = document.getElementById('overlay');";
+                                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                                script += "var imageBox = document.createElement('img');";
+                                script += "imageBox.src = 'images/alert_2N.png';";
+                                script += "imageBox.className = 'custom-image';";
+                                script += "document.body.appendChild(imageBox);";
+                                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                                ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
+                            }
+                        }
                     }
                     else
                     {
-                        string script = "var overlay = document.getElementById('overlay');";
-                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                        script += "var imageBox = document.createElement('img');";
-                        script += "imageBox.src = 'images/alert_2N.png';";
-                        script += "imageBox.className = 'custom-image';";
-                        script += "document.body.appendChild(imageBox);";
-                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                        ClientScript.RegisterStartupScript(GetType(), "新增失敗", script, true);
+                        ErrorMessageLabel.Visible = true;
+                        ErrorMessageLabel.Text = "請輸入有效的數字!";
                     }
-
-
-                    // 重新綁定 GridView 控制項的資料來源
-
                 }
                 else
                 {
                     ErrorMessageLabel.Visible = true;
-                    ErrorMessageLabel.Text = "請輸入有效的數字!";
+                    ErrorMessageLabel.Text = "請輸入數字!";
                 }
             }
-            else
-            {
-                ErrorMessageLabel.Visible = true;
-                ErrorMessageLabel.Text = "請輸入數字!";
-            }
         }
+
 
 
 
@@ -234,9 +227,12 @@ namespace _BookKeeping
             // 取得目前顯示的月份
             int currentMonth = Convert.ToInt32(Session["currentMonth"]);
 
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             // 重新載入該月份的資料
-            MySqlConnection conn = DBConnection();
-            SearchSelectMonth(conn, currentMonth);
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
+            {
+                SearchSelectMonth(conn, currentMonth);
+            }
         }
 
 
@@ -244,66 +240,76 @@ namespace _BookKeeping
 
         protected void DeleteRecord(string num)
         {
-            // 資料庫連接
-            MySqlConnection conn = DBConnection();
-
             string sql = "DELETE FROM `112-112502`.bookkeeping_data WHERE num = @num";
 
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@num", num);
-
-            int rowsAffected = cmd.ExecuteNonQuery();
-
-            if (rowsAffected > 0)
+            // 資料庫連接
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                string script = "var overlay = document.getElementById('overlay');";
-                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                script += "var imageBox = document.createElement('img');";
-                script += "imageBox.src = 'images/alert_3Y.png';";
-                script += "imageBox.className = 'custom-image';";
-                script += "document.body.appendChild(imageBox);";
-                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                ClientScript.RegisterStartupScript(GetType(), "刪除成功", script, true);
-            }
-            else
-            {
-                string script = "var overlay = document.getElementById('overlay');";
-                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                script += "var imageBox = document.createElement('img');";
-                script += "imageBox.src = 'images/alert_3N.png';";
-                script += "imageBox.className = 'custom-image';";
-                script += "document.body.appendChild(imageBox);";
-                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                ClientScript.RegisterStartupScript(GetType(), "刪除失敗", script, true);
-            }
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@num", num);
 
-            conn.Close();
+                    int rowsAffected = cmd.ExecuteNonQuery();
+
+                    if (rowsAffected > 0)
+                    {
+                        string script = "var overlay = document.getElementById('overlay');";
+                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                        script += "var imageBox = document.createElement('img');";
+                        script += "imageBox.src = 'images/alert_3Y.png';";
+                        script += "imageBox.className = 'custom-image';";
+                        script += "document.body.appendChild(imageBox);";
+                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                        ClientScript.RegisterStartupScript(GetType(), "刪除成功", script, true);
+                    }
+                    else
+                    {
+                        string script = "var overlay = document.getElementById('overlay');";
+                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                        script += "var imageBox = document.createElement('img');";
+                        script += "imageBox.src = 'images/alert_3N.png';";
+                        script += "imageBox.className = 'custom-image';";
+                        script += "document.body.appendChild(imageBox);";
+                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                        ClientScript.RegisterStartupScript(GetType(), "刪除失敗", script, true);
+                    }
+                }
+            }
         }
 
 
         protected void GridView1_RowEditing(object sender, GridViewEditEventArgs e)
         {
-            MySqlConnection conn = DBConnection();
+           
             GridView1.EditIndex = e.NewEditIndex;
             int indexMonth = Convert.ToInt32(Label1.Text[Label1.Text.IndexOf("年") + 1].ToString());
-            SearchSelectMonth(conn, indexMonth);
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
+            {
+                SearchSelectMonth(conn, indexMonth);
+            }
+                
 
         }
 
 
         protected void GridView1_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
-            MySqlConnection conn = DBConnection();
             GridView1.EditIndex = -1;
             int indexMonth = Convert.ToInt32(Label1.Text[Label1.Text.IndexOf("年") + 1].ToString());
-            SearchSelectMonth(conn, indexMonth);
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings))
+            {
+                SearchSelectMonth(conn, indexMonth);
+            }
         }
 
         protected void GridView1_RowUpdating(object sender, GridViewUpdateEventArgs e)
         {
-            MySqlConnection conn = DBConnection();
+
             GridViewRow row = GridView1.Rows[e.RowIndex];
 
             // 取得要編輯的資料的主鍵值
@@ -352,51 +358,58 @@ namespace _BookKeeping
 
             // 更新資料庫中的資料
             string sql = "UPDATE `112-112502`.bookkeeping_data SET date = @date, class_id = @category, cost = @cost, mark = @mark WHERE user_id = @user_id AND num = @num";
-
-            MySqlCommand cmd = new MySqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@category", category);
-            cmd.Parameters.AddWithValue("@cost", cost);
-            cmd.Parameters.AddWithValue("@mark", mark);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            cmd.Parameters.AddWithValue("@num", num);
-
-            int rowsAffected = cmd.ExecuteNonQuery();
-
-            if (rowsAffected > 0)
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            using (MySqlConnection conn = new MySqlConnection(connectionStrings)) 
             {
-                string script = "var overlay = document.getElementById('overlay');";
-                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                script += "var imageBox = document.createElement('img');";
-                script += "imageBox.src = 'images/alert_1Y.png';";
-                script += "imageBox.className = 'custom-image';";
-                script += "document.body.appendChild(imageBox);";
-                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", date);
+                    cmd.Parameters.AddWithValue("@category", category);
+                    cmd.Parameters.AddWithValue("@cost", cost);
+                    cmd.Parameters.AddWithValue("@mark", mark);
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    cmd.Parameters.AddWithValue("@num", num);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+
+                    if (rowsAffected > 0)
+                    {
+                        string script = "var overlay = document.getElementById('overlay');";
+                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                        script += "var imageBox = document.createElement('img');";
+                        script += "imageBox.src = 'images/alert_1Y.png';";
+                        script += "imageBox.className = 'custom-image';";
+                        script += "document.body.appendChild(imageBox);";
+                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                        ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
+                    }
+                    else
+                    {
+                        string script = "var overlay = document.getElementById('overlay');";
+                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                        script += "var imageBox = document.createElement('img');";
+                        script += "imageBox.src = 'images/alert_1N.png';";
+                        script += "imageBox.className = 'custom-image';";
+                        script += "document.body.appendChild(imageBox);";
+                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                        ClientScript.RegisterStartupScript(GetType(), "修改失敗", script, true);
+                    }
+                    GridView1.EditIndex = -1;
+
+                    // 取得目前顯示的月份
+                    int currentMonth = Convert.ToInt32(Session["currentMonth"]);
+
+                    // 重新載入該月份的資料
+                    SearchSelectMonth(conn, currentMonth);
+                }
             }
-            else
-            {
-                string script = "var overlay = document.getElementById('overlay');";
-                script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                script += "var imageBox = document.createElement('img');";
-                script += "imageBox.src = 'images/alert_1N.png';";
-                script += "imageBox.className = 'custom-image';";
-                script += "document.body.appendChild(imageBox);";
-                script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                ClientScript.RegisterStartupScript(GetType(), "修改失敗", script, true);
-            }
+                
+            
 
-            GridView1.EditIndex = -1;
+           
 
-            // 取得目前顯示的月份
-            int currentMonth = Convert.ToInt32(Session["currentMonth"]);
-
-            // 重新載入該月份的資料
-            SearchSelectMonth(conn, currentMonth);
-
-            conn.Close();
         }
 
         protected void GridView1_RowDataBound(object sender, GridViewRowEventArgs e)
@@ -431,12 +444,13 @@ namespace _BookKeeping
             // 獲取排序欄位
             string sortExpression = e.SortExpression;
 
-            // 使用 DBConnection 方法建立 MySQL 連接
-            using (MySqlConnection connection = DBConnection())
-            {
-                // 構建 SQL 查詢
-                string query = "SELECT a.num, a.date, b.cls_name, a.cost, a.mark FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id WHERE a.user_id = @user_id and month(date) = @month and year(date) = @year ORDER BY " + sortExpression + " " + direction;
+            string connectionStrings = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            // 構建 SQL 查詢
+            string query = "SELECT a.num, a.date, b.cls_name, a.cost, a.mark FROM `112-112502`.bookkeeping_data as a\r\njoin `112-112502`.bookkeeping_class as b on a.class_id = b.cls_id WHERE a.user_id = @user_id and month(date) = @month and year(date) = @year ORDER BY " + sortExpression + " " + direction;
 
+            // 使用 DBConnection 方法建立 MySQL 連接
+            using (MySqlConnection connection = new MySqlConnection(connectionStrings))
+            {
                 using (MySqlCommand command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@user_id", user_id);

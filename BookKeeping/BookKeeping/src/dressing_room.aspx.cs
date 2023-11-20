@@ -27,13 +27,15 @@ namespace BookKeeping.src
             {
                 // 獲取資料庫連接字串
                 string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+                // 搜尋資料庫
+                string query = "SELECT cloth, cloth2, gender, pet FROM `112-112502`.user WHERE user_id = @user_id";
+                // 查询用户的所有衣服ID頭部
+                string clothQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%body%'";
+                string headQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%head%'";
+                string petQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%pet%'";
 
                 using (MySqlConnection conn = new MySqlConnection(connectionString))
                 {
-                    conn.Open();
-
-                    // 搜尋資料庫
-                    string query = "SELECT cloth, cloth2, gender, pet FROM `112-112502`.user WHERE user_id = @user_id";
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@user_id", user_id);
@@ -56,8 +58,7 @@ namespace BookKeeping.src
                         }
                     }
 
-                    // 查询用户的所有衣服ID頭部
-                    string clothQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%body%'";
+                   
                     using (MySqlCommand clothCmd = new MySqlCommand(clothQuery, conn))
                     {
                         clothCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -69,7 +70,7 @@ namespace BookKeeping.src
                     }
 
                     // 查询用户的所有衣服ID套裝
-                    string headQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%head%'";
+                   
                     using (MySqlCommand headCmd = new MySqlCommand(headQuery, conn))
                     {
                         headCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -78,9 +79,7 @@ namespace BookKeeping.src
                             headRepeater.DataSource = headReader;
                             headRepeater.DataBind();
                         }
-                    }
-
-                    string petQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%pet%'";
+                    }   
                     using (MySqlCommand petCmd = new MySqlCommand(petQuery, conn))
                     {
                         petCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -101,21 +100,18 @@ namespace BookKeeping.src
             string selectedClothingID = hiddenClothingID.Value;
             string selectedHeadwearID = hiddenHeadwearID.Value;
             string selectedPetID = hiddenPetID.Value;
+            // 獲取用戶目前的衣物ID和頭饰ID
+            string currentClothingID = NowBody.ImageUrl;
+            string currentHeadwearID = NowHead.ImageUrl;
+            string currentPetID = NowPet.ImageUrl;
+            // 更新資料庫
+            string updateQuery = "UPDATE `112-112502`.user SET cloth = @newClothingID, cloth2 = @newHeadwearID, pet = @newPetID WHERE user_id = @user_id ";
 
             // 獲取資料庫連接字串
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                // 獲取用戶目前的衣物ID和頭饰ID
-                string currentClothingID = NowBody.ImageUrl;
-                string currentHeadwearID = NowHead.ImageUrl;
-                string currentPetID = NowPet.ImageUrl;
-
-                // 更新資料庫
-                string updateQuery = "UPDATE `112-112502`.user SET cloth = @newClothingID, cloth2 = @newHeadwearID, pet = @newPetID WHERE user_id = @user_id ";
                 using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
                 {
                     // 根據用戶的選擇來更新或保留衣物ID和頭饰ID
@@ -165,13 +161,11 @@ namespace BookKeeping.src
             string currentUserPetURL = "";
             // 获取数据库连接字符串
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            // 查询用户的衣物和头饰数据
+            string userQuery = "SELECT cloth, cloth2, pet FROM `112-112502`.user WHERE user_id = @user_id";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                // 查询用户的衣物和头饰数据
-                string userQuery = "SELECT cloth, cloth2, pet FROM `112-112502`.user WHERE user_id = @user_id";
                 using (MySqlCommand userCmd = new MySqlCommand(userQuery, conn))
                 {
                     userCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -202,16 +196,13 @@ namespace BookKeeping.src
         protected List<string> GetUserDataBodyClothing()
         {
             List<string> clothingUrls = new List<string>();
-
             // 获取数据库连接字符串
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            // 查询用户的衣物和头饰数据
+            string userQuery = "SELECT cloth, cloth2, pet FROM `112-112502`.user WHERE user_id = @user_id";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-
-                // 查询用户的衣物数据
-                string userQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%body%'";
+            {    
                 using (MySqlCommand userCmd = new MySqlCommand(userQuery, conn))
                 {
                     userCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -237,13 +228,11 @@ namespace BookKeeping.src
 
             // 获取数据库连接字符串
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            // 查询用户的衣物数据
+            string userQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%head%'";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                // 查询用户的衣物数据
-                string userQuery = "SELECT cloth_id FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%head%'";
                 using (MySqlCommand userCmd = new MySqlCommand(userQuery, conn))
                 {
                     userCmd.Parameters.AddWithValue("@user_id", user_id);
@@ -266,16 +255,14 @@ namespace BookKeeping.src
         protected List<string> GetUserDataPet()
         {
             List<string> clothingUrls = new List<string>();
+            // 查询用户的衣物数据
+            string userQuery = "SELECT cloth FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%pet%'";
 
             // 获取数据库连接字符串
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                // 查询用户的衣物数据
-                string userQuery = "SELECT cloth FROM `112-112502`.achievement_complete WHERE user_id = @user_id and cloth_id like '%pet%'";
                 using (MySqlCommand userCmd = new MySqlCommand(userQuery, conn))
                 {
                     userCmd.Parameters.AddWithValue("@user_id", user_id);

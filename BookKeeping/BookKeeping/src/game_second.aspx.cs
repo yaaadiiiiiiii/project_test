@@ -280,12 +280,9 @@ namespace BookKeeping.src
             string user_id = Session["UserID"].ToString();
             int corcnt = Convert.ToInt32(correctcnt.Text);
             DateTime overtime = DateTime.Now;
-
+            string sql = "INSERT INTO `112-112502`.`gamedata` (user_id , time , score ) VALUES (@userid , @time , @score);";
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                connection.Open();
-
-                string sql = "INSERT INTO `112-112502`.`gamedata` (user_id , time , score ) VALUES (@userid , @time , @score);";
                 using (MySqlCommand cmd = new MySqlCommand(sql, connection))
                 {
                     cmd.Parameters.AddWithValue("@userid", user_id);

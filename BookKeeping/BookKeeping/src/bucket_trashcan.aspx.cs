@@ -26,60 +26,58 @@ namespace _BookKeeping
         protected void ShowCannotBuyReason()
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            string sql = "SELECT d_name, reason FROM `112-112502`.bucket_list WHERE user_id = @user_id AND exchange_state is null and pass_state = 'n'";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                string sql = "SELECT d_name, reason FROM `112-112502`.bucket_list WHERE user_id = @user_id AND exchange_state is null and pass_state = 'n'";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", user_id);
-
-                using (MySqlDataReader reader = cmd.ExecuteReader())
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn)) 
                 {
-                    if (reader.HasRows)
+                    cmd.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        // 获取查询结果的总行数
-                        totalRows = 0;
-                        while (reader.Read())
+                        if (reader.HasRows)
                         {
-                            totalRows++;
+                            // 获取查询结果的总行数
+                            totalRows = 0;
+                            while (reader.Read())
+                            {
+                                totalRows++;
+                            }
+
+                            // 更新当前数据的索引，确保它在有效范围内
+                            if (currentRowIndex < 0)
+                            {
+                                currentRowIndex = totalRows - 1;
+                            }
+                            if (currentRowIndex >= totalRows)
+                            {
+                                currentRowIndex = 0;
+                            }
+                        }
+                    }
+                    // 查询当前索引的数据
+                    cmd.CommandText = sql + $" LIMIT {currentRowIndex}, 1";
+                    using (MySqlDataReader dataReader = cmd.ExecuteReader())
+                    {
+                        if (dataReader.Read())
+                        {
+                            string d_name = dataReader["d_name"].ToString();
+                            string reason = dataReader["reason"].ToString();
+                            CantBuy.Text = "不能買：" + d_name;
+                            Cause.Text = "因為" + reason;
+                            wish.Text = d_name;// 存儲願望名稱
+                            wish.Visible = false;
                         }
 
-                        // 更新当前数据的索引，确保它在有效范围内
-                        if (currentRowIndex < 0)
+                        else
                         {
-                            currentRowIndex = totalRows - 1;
-                        }
-                        if (currentRowIndex >= totalRows)
-                        {
-                            currentRowIndex = 0;
+                            NoCantBuy.Text = "目前沒有被拒絕的願望喔~";
+                            CantBuy.Text = "";
+                            Cause.Text = "";
                         }
                     }
                 }
-
-                // 查询当前索引的数据
-                cmd.CommandText = sql + $" LIMIT {currentRowIndex}, 1";
-
-                using (MySqlDataReader dataReader = cmd.ExecuteReader())
-                {
-                    if (dataReader.Read())
-                    {
-                        string d_name = dataReader["d_name"].ToString();                       
-                        string reason = dataReader["reason"].ToString();
-                        CantBuy.Text = "不能買：" + d_name;
-                        Cause.Text = "因為" + reason;
-                        wish.Text = d_name;// 存儲願望名稱
-                        wish.Visible = false;
-                    }
-
-                    else
-                    {
-                        NoCantBuy.Text = "目前沒有被拒絕的願望喔~";
-                        CantBuy.Text = "";
-                        Cause.Text = "";
-                    }
-                }
+                
             }
         }
 
@@ -114,14 +112,11 @@ namespace _BookKeeping
         protected void Submit1_Click(object sender, EventArgs e)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            // 使用 UPDATE SQL 語句將 exchange_state 更新為 "R"，確保只更新符合特定條件的資料行
+            string updateSql = "UPDATE `112-112502`.bucket_list SET exchange_state = 'R', exchange_time = now() WHERE d_name = @d_name and user_id = @user_id";
 
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
-                conn.Open();
-
-                // 使用 UPDATE SQL 語句將 exchange_state 更新為 "R"，確保只更新符合特定條件的資料行
-                string updateSql = "UPDATE `112-112502`.bucket_list SET exchange_state = 'R', exchange_time = now() WHERE d_name = @d_name and user_id = @user_id";
-
                 using (MySqlCommand cmd = new MySqlCommand(updateSql, conn))
                 {
                     cmd.Parameters.AddWithValue("@d_name", wish.Text);

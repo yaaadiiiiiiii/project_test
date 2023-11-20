@@ -28,167 +28,166 @@ namespace BookKeeping.src
             {
                 // 使用用户 ID 查询数据库以获取用户数据
                 string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+                // 创建 SQL 查询
+                string query = "SELECT nickname, user_id, gender, cloth, cloth2, pet FROM `112-112502`.user WHERE user_id = @UserID";
+
                 using (MySqlConnection connection = new MySqlConnection(connectionString))
                 {
-                    connection.Open();
-
-                    // 创建 SQL 查询
-                    string query = "SELECT nickname, user_id, gender, cloth, cloth2, pet FROM `112-112502`.user WHERE user_id = @UserID";
-
-                    using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                    try 
                     {
-                        cmd.Parameters.AddWithValue("@UserID", user_id);
-
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        connection.Open();
+                        using (MySqlCommand cmd = new MySqlCommand(query, connection))
                         {
-
-                            if (reader.Read())
+                            cmd.Parameters.AddWithValue("@UserID", user_id);
+                            using (MySqlDataReader reader = cmd.ExecuteReader())
                             {
-
-                                string currentHeadID = reader["cloth2"].ToString();
-                                MainHead.ImageUrl = currentHeadID;
-                                string currentBodyID = reader["cloth"].ToString();
-                                MainBody.ImageUrl = currentBodyID;
-                                string currentPetID = reader["pet"].ToString();
-                                MainPet.ImageUrl = currentPetID;
-
-                                // 从数据库中获取用户数据并填充到 Label 中
-                                NickName.Text = reader["nickname"].ToString();
-                                UId.Text = reader["user_id"].ToString();
-
-                                if (string.IsNullOrEmpty(NickName.Text))
+                                if (reader.Read())
                                 {
-                                    NickName.Text = user_id;
-                                    UId.Text = "";
-                                }
-                                else
-                                {
+                                    string currentHeadID = reader["cloth2"].ToString();
+                                    MainHead.ImageUrl = currentHeadID;
+                                    string currentBodyID = reader["cloth"].ToString();
+                                    MainBody.ImageUrl = currentBodyID;
+                                    string currentPetID = reader["pet"].ToString();
+                                    MainPet.ImageUrl = currentPetID;
+
+                                    // 从数据库中获取用户数据并填充到 Label 中
                                     NickName.Text = reader["nickname"].ToString();
                                     UId.Text = reader["user_id"].ToString();
-                                }
 
-                                if (reader["gender"].ToString() == "男生")
-                                {
-                                    AvatarHead.ImageUrl = "images/avatar/ava_boy.png";
-                                }
-                                else
-                                {
-                                    AvatarHead.ImageUrl = "images/avatar/ava_girl.png";
+                                    if (string.IsNullOrEmpty(NickName.Text))
+                                    {
+                                        NickName.Text = user_id;
+                                        UId.Text = "";
+                                    }
+                                    else
+                                    {
+                                        NickName.Text = reader["nickname"].ToString();
+                                        UId.Text = reader["user_id"].ToString();
+                                    }
+
+                                    if (reader["gender"].ToString() == "男生")
+                                    {
+                                        AvatarHead.ImageUrl = "images/avatar/ava_boy.png";
+                                    }
+                                    else
+                                    {
+                                        AvatarHead.ImageUrl = "images/avatar/ava_girl.png";
+                                    }
                                 }
                             }
+                        }
+                    }
+                   catch (Exception ex) 
+                    {
+                        ClientScript.RegisterStartupScript(GetType(), "DatabaseError", $"alert('資料庫錯誤：{ex.Message}');", true);
+                    }
+                    finally
+                    {
+                        if (connection.State == System.Data.ConnectionState.Open)
+                        {
+                            connection.Close();
                         }
                     }
                 }
             }   
         }
-
-        protected MySqlConnection DBConnection()
-        {
-            string connection = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
-            MySqlConnection conn = new MySqlConnection(connection);
-            conn.Open();
-            return conn;
-        }
-
         //抓取願望類別的總金額
         private int GetWishAmount() 
         {
-           int wish_amount = 0;
-            MySqlConnection conn = DBConnection();
-
+            int wish_amount = 0;
+            string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+            int count;
             //判斷願望類別是否有資料
             string sql_count = "SELECT count(*) FROM `112-112502`.bookkeeping_data where user_id = @user_id and class_id = '1'";
-            MySqlCommand cmd_count = new MySqlCommand(sql_count, conn);
-            cmd_count.Parameters.AddWithValue("@user_id", user_id);
-             MySqlDataReader reader_count = cmd_count.ExecuteReader(); 
-             reader_count.Read();
-             int count =  reader_count.GetInt32(0);
-             conn.Close();
 
-            //抓取願望類別總金額
-            if (count>0) 
-            {
-                conn.Open ();
-                string sql_wish = @"
+            string sql_wish = @"
                     SELECT 
                     COALESCE((SELECT SUM(cost) FROM `112-112502`.bookkeeping_data WHERE user_id = @user_id AND class_id = '1'), 0) -
                     COALESCE((SELECT SUM(cost) FROM `112-112502`.bookkeeping_data WHERE user_id = @user_id AND class_id = '5'), 0) AS 現有存款";
-
-                MySqlCommand cmd_wish = new MySqlCommand(sql_wish, conn);
-                cmd_wish.Parameters.AddWithValue("@user_id", user_id);
-                MySqlDataReader reader_wish = cmd_wish.ExecuteReader();
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                using (MySqlCommand cmd_count = new MySqlCommand(sql_count, conn))
                 {
-                    reader_wish.Read();
-                    wish_amount += reader_wish.GetInt32(0);
+                    cmd_count.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader_count = cmd_count.ExecuteReader())
+                    {
+                        reader_count.Read();
+                        count = reader_count.GetInt32(0);
+                    }
                 }
-                
-                conn.Close();
+                //抓取願望類別總金額
+                if (count > 0)
+                {
+                    using (MySqlCommand cmd_wish = new MySqlCommand(sql_wish, conn))
+                    {
+                        cmd_wish.Parameters.AddWithValue("@user_id", user_id);
+                        using (MySqlDataReader reader_wish = cmd_wish.ExecuteReader())
+                        {
+                            reader_wish.Read();
+                            wish_amount += reader_wish.GetInt32(0);
+                        }
+                    }
+                }
             }
-
-            
-            
-
-            return wish_amount;
-        }
+                return wish_amount;
+         }
         //抓取目標願望的金額
         private int GetTargetAmount()
         {
-
+            int count;
+            string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
             int wish_amount = GetWishAmount();
 
             //判斷是否有目標
             int target_amount = 0;
-            MySqlConnection conn = DBConnection();
-
             //判斷願望類別是否有資料
             string sql_count = "SELECT count(*) FROM `112-112502`.bucket_list where user_id = @user_id and pass_state='y' and exchange_state is null ";
-            MySqlCommand cmd_count = new MySqlCommand(sql_count, conn);
-            cmd_count.Parameters.AddWithValue("@user_id", user_id);
-            MySqlDataReader reader_count = cmd_count.ExecuteReader();
-            reader_count.Read();
-            int count = reader_count.GetInt32(0);
-            conn.Close();
-
-            //抓取目標願望金額
-            if (count > 0) 
+            using (MySqlConnection conn = new MySqlConnection(connectionString)) 
             {
-                conn.Open ();
-                string sql_target = "SELECT pass_amount FROM `112-112502`.bucket_list where user_id = @user_id and pass_state='y'and exchange_state is null";
-                using (MySqlCommand cmd_target = new MySqlCommand(sql_target, conn)) 
+                using (MySqlCommand cmd_count = new MySqlCommand(sql_count, conn))
                 {
-                    cmd_target.Parameters.AddWithValue("@user_id", user_id);
-
-                    using (MySqlDataReader target_reader = cmd_target.ExecuteReader()) 
-                    { 
-                        List<int> wishAmountList = new List<int>();
-
-                        while (target_reader.Read()) 
-                        {
-                            int passAmount = target_reader.GetInt32("pass_amount");
-                            wishAmountList.Add(passAmount);
-                        }
-
-                        wishAmountList.Sort();
-
-                        int maxnum = wishAmountList.Max();
-
-                        foreach (int num in wishAmountList) 
-                        {
-                            if (wish_amount < num || num == maxnum) 
-                            { 
-                                target_amount = num;
-                                break;
-                            }
-                        }
-
+                    cmd_count.Parameters.AddWithValue("@user_id", user_id);
+                    using (MySqlDataReader reader_count = cmd_count.ExecuteReader())
+                    {
+                        reader_count.Read();
+                        count = reader_count.GetInt32(0);
                     }
                 }
-               
-            }
+                //抓取目標願望金額
+                if (count > 0)
+                {
+                    string sql_target = "SELECT pass_amount FROM `112-112502`.bucket_list where user_id = @user_id and pass_state='y'and exchange_state is null";
+                    using (MySqlCommand cmd_target = new MySqlCommand(sql_target, conn))
+                    {
+                        cmd_target.Parameters.AddWithValue("@user_id", user_id);
 
-            
-     
-            
+                        using (MySqlDataReader target_reader = cmd_target.ExecuteReader())
+                        {
+                            List<int> wishAmountList = new List<int>();
+
+                            while (target_reader.Read())
+                            {
+                                int passAmount = target_reader.GetInt32("pass_amount");
+                                wishAmountList.Add(passAmount);
+                            }
+
+                            wishAmountList.Sort();
+
+                            int maxnum = wishAmountList.Max();
+
+                            foreach (int num in wishAmountList)
+                            {
+                                if (wish_amount < num || num == maxnum)
+                                {
+                                    target_amount = num;
+                                    break;
+                                }
+                            }
+
+                        }
+                    }
+                }      
+            }
             return target_amount;
         }
 

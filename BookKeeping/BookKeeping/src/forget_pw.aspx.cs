@@ -65,49 +65,52 @@ namespace BookKeeping.src
                 }
 
                 string connectionString = ConfigurationManager.ConnectionStrings["DBConnectionString"].ConnectionString;
+                string selectQuery = "UPDATE `112-112502`.user SET password = @password WHERE user_id = @user_id and question1 = @question1 and answer1 = @answer1";
 
                 using (MySqlConnection conn = new MySqlConnection(connectionString))
                 {
-                    conn.Open();
 
-                    string selectQuery = "UPDATE `112-112502`.user SET password = @password WHERE user_id = @user_id and question1 = @question1 and answer1 = @answer1";
-                    MySqlCommand selectCommand = new MySqlCommand(selectQuery, conn);
-                    selectCommand.Parameters.AddWithValue("@question1", selectquestion);
-                    selectCommand.Parameters.AddWithValue("@answer1", selectanswer);
-                    selectCommand.Parameters.AddWithValue("@password", newpwd);
-                    selectCommand.Parameters.AddWithValue("@user_id", account);
-
-                    int rowsUpdated = selectCommand.ExecuteNonQuery();
-
-                    if (rowsUpdated > 0)
+                    using (MySqlCommand selectCommand = new MySqlCommand(selectQuery, conn)) 
                     {
-                        // Password updated successfully
-                        secretAnswer.Text = "";
-                        newanswer.Text = "";
-                        enteraccount.Text = "";
+                        selectCommand.Parameters.AddWithValue("@question1", selectquestion);
+                        selectCommand.Parameters.AddWithValue("@answer1", selectanswer);
+                        selectCommand.Parameters.AddWithValue("@password", newpwd);
+                        selectCommand.Parameters.AddWithValue("@user_id", account);
 
-                        string script = "var overlay = document.getElementById('overlay');";
-                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                        script += "var imageBox = document.createElement('img');";
-                        script += "imageBox.src = 'images/alert_1Y.png';";
-                        script += "imageBox.className = 'custom-image';";
-                        script += "document.body.appendChild(imageBox);";
-                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                        script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/login.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
-                        ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
+                        int rowsUpdated = selectCommand.ExecuteNonQuery();
+                        if (rowsUpdated > 0)
+                        {
+                            // Password updated successfully
+                            secretAnswer.Text = "";
+                            newanswer.Text = "";
+                            enteraccount.Text = "";
+
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_1Y.png';";
+                            script += "imageBox.className = 'custom-image';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; window.location.href = '" + ResolveUrl("~/src/login.aspx") + "'; }, 2000);"; // 显示图像一段时间后跳转
+                            ClientScript.RegisterStartupScript(GetType(), "修改成功", script, true);
+                        }
+                        else
+                        {
+                            string script = "var overlay = document.getElementById('overlay');";
+                            script += "overlay.style.display = 'block';"; // 顯示背景遮罩
+                            script += "var imageBox = document.createElement('img');";
+                            script += "imageBox.src = 'images/alert_saveq_n.png';";
+                            script += "imageBox.className = 'custom-image2';";
+                            script += "document.body.appendChild(imageBox);";
+                            script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
+                            script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
+                            ClientScript.RegisterStartupScript(GetType(), "安全問題不正確", script, true);
+                        }
                     }
-                    else
-                    {
-                        string script = "var overlay = document.getElementById('overlay');";
-                        script += "overlay.style.display = 'block';"; // 顯示背景遮罩
-                        script += "var imageBox = document.createElement('img');";
-                        script += "imageBox.src = 'images/alert_saveq_n.png';";
-                        script += "imageBox.className = 'custom-image2';";
-                        script += "document.body.appendChild(imageBox);";
-                        script += "setTimeout(function() { overlay.style.display = 'none'; }, 2000);"; // 隱藏背景遮罩
-                        script += "setTimeout(function() { imageBox.style.display = 'none'; }, 2000);"; // 自动隐藏图像
-                        ClientScript.RegisterStartupScript(GetType(), "安全問題不正確", script, true);
-                    }
+
+
+                   
                 }
             }
         }
